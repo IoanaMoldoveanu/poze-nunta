@@ -1143,212 +1143,245 @@
 
   <script>
 
-    const appContainer =
-      document.getElementById('appContainer');
-
-    const status =
-      document.getElementById('status');
-
-    const statusNote =
-      document.getElementById('statusNote');
-
-    const loader =
-      document.getElementById('loader');
-
-    const statusIcon =
-      document.getElementById('statusIcon');
-
-
-
-    function setIdleState(
-      message = "Nu ai selectat încă niciun fișier.",
-      note = "Poți trimite o poză sau un video direct de pe telefon."
-    ) {
-
-      appContainer.classList.remove('uploading');
-
-      loader.style.display = "none";
-
-      statusIcon.style.display = "flex";
-
-      status.innerText = message;
-
-      statusNote.innerText = note;
-    }
-
-
-
-    function setUploadingState(fileName) {
-
-      appContainer.classList.add('uploading');
-
-      statusIcon.style.display = "none";
-
-      loader.style.display = "block";
-
-      status.innerText =
-        "Se trimite fișierul...";
-
-      statusNote.innerText =
-        fileName
-          ? `Fișier selectat: ${fileName}`
-          : "Te rugăm să aștepți câteva momente.";
-    }
-
-
-
-    function setSuccessState() {
-
-      appContainer.classList.remove('uploading');
-
-      loader.style.display = "none";
-
-      statusIcon.style.display = "flex";
-
-      status.innerText =
-        "Gata! Fișierul a fost trimis cu succes.";
-
-      statusNote.innerText =
-        "Poți încărca și alte poze sau videoclipuri dacă vrei.";
-    }
-
-
-
-    function setErrorState(
-      message = "A apărut o problemă la trimitere."
-    ) {
-
-      appContainer.classList.remove('uploading');
-
-      loader.style.display = "none";
-
-      statusIcon.style.display = "flex";
-
-      status.innerText =
-        "Upload nereușit";
-
-      statusNote.innerText =
-        message;
-    }
-
-
-
-    function resetInput(input) {
-      input.value = "";
-    }
-
-
-
-    function handleFileSelect(input) {
-
-      const file = input.files[0];
-
-      if (!file) return;
-
-
-      setUploadingState(file.name);
-
-
-      const reader = new FileReader();
-
-
-      reader.onerror = function () {
-
+  const API_URL =
+    "https://script.google.com/macros/s/AKfycbzYruwzgwcJkU99zj9RmmWdVuExogJuqWD4B1cjqb6z71ua7mIO6k6EbmmkW8qaar9M/exec";
+  
+  const UPLOAD_TOKEN =
+    "NUNTA-2026-IOANA-UPLOAD-8xK4mP2q";
+  
+  
+  const appContainer =
+    document.getElementById("appContainer");
+  
+  const status =
+    document.getElementById("status");
+  
+  const statusNote =
+    document.getElementById("statusNote");
+  
+  const loader =
+    document.getElementById("loader");
+  
+  const statusIcon =
+    document.getElementById("statusIcon");
+  
+  
+  function setIdleState(
+    message = "Nu ai selectat încă niciun fișier.",
+    note = "Poți trimite o poză sau un video direct de pe telefon."
+  ) {
+  
+    appContainer.classList.remove("uploading");
+  
+    loader.style.display = "none";
+    statusIcon.style.display = "flex";
+  
+    status.innerText = message;
+    statusNote.innerText = note;
+  }
+  
+  
+  function setUploadingState(fileName) {
+  
+    appContainer.classList.add("uploading");
+  
+    statusIcon.style.display = "none";
+    loader.style.display = "block";
+  
+    status.innerText = "Se trimite fișierul...";
+  
+    statusNote.innerText =
+      fileName
+        ? `Fișier selectat: ${fileName}`
+        : "Te rugăm să aștepți.";
+  }
+  
+  
+  function setSuccessState() {
+  
+    appContainer.classList.remove("uploading");
+  
+    loader.style.display = "none";
+    statusIcon.style.display = "flex";
+  
+    status.innerText =
+      "Gata! Fișierul a fost trimis.";
+  
+    statusNote.innerText =
+      "Poți încărca și alte poze sau videoclipuri.";
+  }
+  
+  
+  function setErrorState(message) {
+  
+    appContainer.classList.remove("uploading");
+  
+    loader.style.display = "none";
+    statusIcon.style.display = "flex";
+  
+    status.innerText = "Upload nereușit";
+  
+    statusNote.innerText =
+      message || "Încearcă din nou.";
+  }
+  
+  
+  function resetInput(input) {
+    input.value = "";
+  }
+  
+  
+  function handleFileSelect(input) {
+  
+    const file = input.files[0];
+  
+    if (!file) return;
+  
+    setUploadingState(file.name);
+  
+    const reader = new FileReader();
+  
+  
+    reader.onerror = function () {
+  
+      setErrorState(
+        "Fișierul nu a putut fi citit."
+      );
+  
+      resetInput(input);
+    };
+  
+  
+    reader.onload = function (event) {
+  
+      const result = event.target.result;
+  
+      if (!result || !result.includes(",")) {
+  
         setErrorState(
-          "Fișierul nu a putut fi citit. Încearcă din nou."
+          "Fișierul nu a putut fi procesat."
         );
-
+  
         resetInput(input);
-
+  
+        return;
+      }
+  
+  
+      const base64 =
+        result.split(",")[1];
+  
+  
+      /*
+        Cream un iframe invizibil.
+        Formularul va fi trimis în el,
+        astfel pagina nunții rămâne deschisă.
+      */
+  
+      const iframe =
+        document.createElement("iframe");
+  
+      const iframeName =
+        "uploadFrame_" + Date.now();
+  
+      iframe.name = iframeName;
+      iframe.style.display = "none";
+  
+      document.body.appendChild(iframe);
+  
+  
+      const form =
+        document.createElement("form");
+  
+      form.method = "POST";
+      form.action = API_URL;
+      form.target = iframeName;
+  
+      form.style.display = "none";
+  
+  
+      const fields = {
+        token: UPLOAD_TOKEN,
+        base64: base64,
+        type: file.type,
+        name: file.name
       };
-
-
-      reader.onload = function (e) {
-
-        const result =
-          e.target.result;
-
-
-        if (
-          !result ||
-          !result.includes(',')
-        ) {
-
-          setErrorState(
-            "Fișierul nu a putut fi procesat corect."
-          );
-
-          resetInput(input);
-
-          return;
-        }
-
-
-        const base64 =
-          result.split(',')[1];
-
-
-        const API_URL =
-          "https://script.google.com/macros/s/AKfycbzYruwzgwcJkU99zj9RmmWdVuExogJuqWD4B1cjqb6z71ua7mIO6k6EbmmkW8qaar9M/exec";
-
-        const UPLOAD_TOKEN =
-          "NUNTA-2026-IOANA-UPLOAD-8xK4mP2q";
-
-        fetch(API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8"
-          },
-          body: JSON.stringify({
-            token: UPLOAD_TOKEN,
-            base64: base64,
-            type: file.type,
-            name: file.name
-          })
-        })
-        .then(function () {
-          setSuccessState();
-          resetInput(input);
-        })
-        .catch(function () {
-          setErrorState(
-            "Te rugăm să încerci din nou peste câteva secunde."
-          );
-          resetInput(input);
-        });
-
+  
+  
+      Object.keys(fields).forEach(function (key) {
+  
+        const field =
+          document.createElement("input");
+  
+        field.type = "hidden";
+        field.name = key;
+        field.value = fields[key];
+  
+        form.appendChild(field);
+      });
+  
+  
+      document.body.appendChild(form);
+  
+  
+      /*
+        load poate fi declanșat o dată când iframe-ul
+        gol este creat și apoi din nou după răspuns.
+      */
+  
+      let submitted = false;
+  
+  
+      iframe.onload = function () {
+  
+        if (!submitted) return;
+  
+        setSuccessState();
+  
+        resetInput(input);
+  
+        setTimeout(function () {
+  
+          form.remove();
+          iframe.remove();
+  
+        }, 1000);
       };
+  
+  
+      submitted = true;
+  
+      form.submit();
+    };
+  
+  
+    reader.readAsDataURL(file);
+  }
+  
+  
+  document
+    .getElementById("fileCamera")
+    .addEventListener(
+      "change",
+      function () {
+        handleFileSelect(this);
+      }
+    );
+  
+  
+  document
+    .getElementById("fileGallery")
+    .addEventListener(
+      "change",
+      function () {
+        handleFileSelect(this);
+      }
+    );
+  
+  
+  setIdleState();
 
-
-      reader.readAsDataURL(file);
-    }
-
-
-
-    document
-      .getElementById('fileCamera')
-      .addEventListener(
-        'change',
-        function () {
-          handleFileSelect(this);
-        }
-      );
-
-
-    document
-      .getElementById('fileGallery')
-      .addEventListener(
-        'change',
-        function () {
-          handleFileSelect(this);
-        }
-      );
-
-
-    setIdleState();
-
-  </script>
+</script>
 
 </body>
 </html>
