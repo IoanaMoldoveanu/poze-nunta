@@ -1142,246 +1142,469 @@
 
 
   <script>
-
-  const API_URL =
-    "https://script.google.com/macros/s/AKfycbxKNqD2-PM3lweByRp8l-fdsiM5BYrRdsFxsMMu20J_v0HgZj9QaWN_bz0U0BLOCZG1/exec";
   
-  const UPLOAD_TOKEN =
-    "NUNTA-2026-IOANA-UPLOAD-8xK4mP2q";
+    const API_URL =
+      "https://script.google.com/macros/s/AKfycbxKNqD2-PM3lweByRp8l-fdsiM5BYrRdsFxsMMu20J_v0HgZj9QaWN_bz0U0BLOCZG1/exec";
   
-  
-  const appContainer =
-    document.getElementById("appContainer");
-  
-  const status =
-    document.getElementById("status");
-  
-  const statusNote =
-    document.getElementById("statusNote");
-  
-  const loader =
-    document.getElementById("loader");
-  
-  const statusIcon =
-    document.getElementById("statusIcon");
+    const UPLOAD_TOKEN =
+      "NUNTA-2026-IOANA-UPLOAD-8xK4mP2q";
   
   
-  function setIdleState(
-    message = "Nu ai selectat încă niciun fișier.",
-    note = "Poți trimite o poză sau un video direct de pe telefon."
-  ) {
+    const appContainer =
+      document.getElementById("appContainer");
   
-    appContainer.classList.remove("uploading");
+    const status =
+      document.getElementById("status");
   
-    loader.style.display = "none";
-    statusIcon.style.display = "flex";
+    const statusNote =
+      document.getElementById("statusNote");
   
-    status.innerText = message;
-    statusNote.innerText = note;
-  }
+    const loader =
+      document.getElementById("loader");
   
-  
-  function setUploadingState(fileName) {
-  
-    appContainer.classList.add("uploading");
-  
-    statusIcon.style.display = "none";
-    loader.style.display = "block";
-  
-    status.innerText = "Se trimite fișierul...";
-  
-    statusNote.innerText =
-      fileName
-        ? `Fișier selectat: ${fileName}`
-        : "Te rugăm să aștepți.";
-  }
+    const statusIcon =
+      document.getElementById("statusIcon");
   
   
-  function setSuccessState() {
+    /*
+      ============================
+      STAREA INIȚIALĂ
+      ============================
+    */
   
-    appContainer.classList.remove("uploading");
+    function setIdleState(
+      message = "Nu ai selectat încă niciun fișier.",
+      note = "Poți trimite o poză sau un video direct de pe telefon."
+    ) {
   
-    loader.style.display = "none";
-    statusIcon.style.display = "flex";
+      appContainer.classList.remove("uploading");
   
-    status.innerText =
-      "Gata! Fișierul a fost trimis.";
+      loader.style.display = "none";
+      statusIcon.style.display = "flex";
   
-    statusNote.innerText =
-      "Poți încărca și alte poze sau videoclipuri.";
-  }
-  
-  
-  function setErrorState(message) {
-  
-    appContainer.classList.remove("uploading");
-  
-    loader.style.display = "none";
-    statusIcon.style.display = "flex";
-  
-    status.innerText = "Upload nereușit";
-  
-    statusNote.innerText =
-      message || "Încearcă din nou.";
-  }
+      status.innerText = message;
+      statusNote.innerText = note;
+    }
   
   
-  function resetInput(input) {
-    input.value = "";
-  }
+    /*
+      ============================
+      UPLOAD ÎN CURS
+      ============================
+    */
+  
+    function setUploadingState(fileName) {
+  
+      appContainer.classList.add("uploading");
+  
+      statusIcon.style.display = "none";
+      loader.style.display = "block";
+  
+      status.innerText =
+        "Se pregătește fișierul...";
+  
+      statusNote.innerText =
+        fileName
+          ? `Fișier selectat: ${fileName}`
+          : "Te rugăm să aștepți.";
+    }
   
   
-  function handleFileSelect(input) {
+    /*
+      ============================
+      SUCCES
+      ============================
+    */
   
-    const file = input.files[0];
+    function setSuccessState() {
   
-    if (!file) return;
+      appContainer.classList.remove("uploading");
   
-    setUploadingState(file.name);
+      loader.style.display = "none";
+      statusIcon.style.display = "flex";
   
-    const reader = new FileReader();
+      status.innerText =
+        "Gata! Fișierul a fost trimis.";
+  
+      statusNote.innerText =
+        "Poți încărca și alte poze sau videoclipuri.";
+    }
   
   
-    reader.onerror = function () {
+    /*
+      ============================
+      EROARE
+      ============================
+    */
   
-      setErrorState(
-        "Fișierul nu a putut fi citit."
+    function setErrorState(message) {
+  
+      appContainer.classList.remove("uploading");
+  
+      loader.style.display = "none";
+      statusIcon.style.display = "flex";
+  
+      status.innerText =
+        "Upload nereușit";
+  
+      statusNote.innerText =
+        message || "Încearcă din nou.";
+    }
+  
+  
+    function resetInput(input) {
+      input.value = "";
+    }
+  
+  
+    /*
+      ==================================================
+      TRIMITEREA FIȘIERULUI DIRECT CĂTRE GOOGLE DRIVE
+      ==================================================
+    */
+  
+    function uploadDirectToDrive(
+      sessionUrl,
+      file,
+      input
+    ) {
+  
+      const xhr =
+        new XMLHttpRequest();
+  
+  
+      xhr.open(
+        "PUT",
+        sessionUrl,
+        true
       );
   
-      resetInput(input);
-    };
+  
+      xhr.setRequestHeader(
+        "Content-Type",
+        file.type ||
+        "application/octet-stream"
+      );
   
   
-    reader.onload = function (event) {
+      /*
+        PROGRES REAL AL UPLOADULUI
+      */
   
-      const result = event.target.result;
+      xhr.upload.onprogress =
+        function (event) {
   
-      if (!result || !result.includes(",")) {
+          if (!event.lengthComputable) {
+            return;
+          }
   
-        setErrorState(
-          "Fișierul nu a putut fi procesat."
-        );
+          const percent =
+            Math.round(
+              (event.loaded / event.total) *
+              100
+            );
   
-        resetInput(input);
   
+          status.innerText =
+            "Se trimite fișierul... " +
+            percent +
+            "%";
+  
+          statusNote.innerText =
+            file.name;
+        };
+  
+  
+      /*
+        UPLOAD TERMINAT
+      */
+  
+      xhr.onload =
+        function () {
+  
+          if (
+            xhr.status >= 200 &&
+            xhr.status < 300
+          ) {
+  
+            setSuccessState();
+  
+            resetInput(input);
+  
+          } else {
+  
+            console.error(
+              "Drive upload error:",
+              xhr.status,
+              xhr.responseText
+            );
+  
+            setErrorState(
+              "Google Drive nu a putut salva fișierul."
+            );
+  
+            resetInput(input);
+          }
+        };
+  
+  
+      /*
+        PROBLEMĂ DE REȚEA
+      */
+  
+      xhr.onerror =
+        function () {
+  
+          console.error(
+            "Eroare de rețea la upload."
+          );
+  
+          setErrorState(
+            "Conexiunea s-a întrerupt. Încearcă din nou."
+          );
+  
+          resetInput(input);
+        };
+  
+  
+      /*
+        TRIMITEM FIȘIERUL ORIGINAL.
+  
+        NU Base64.
+        NU FileReader.
+        NU iframe.
+        NU formular ascuns.
+      */
+  
+      xhr.send(file);
+    }
+  
+  
+    /*
+      ==================================================
+      FIȘIER SELECTAT
+      ==================================================
+    */
+  
+    function handleFileSelect(input) {
+  
+      const file =
+        input.files[0];
+  
+  
+      if (!file) {
         return;
       }
   
   
-      const base64 =
-        result.split(",")[1];
+      setUploadingState(
+        file.name
+      );
   
   
       /*
-        Cream un iframe invizibil.
-        Formularul va fi trimis în el,
-        astfel pagina nunții rămâne deschisă.
+        Creăm un nume unic pentru callback-ul
+        pe care Apps Script îl va apela.
       */
   
-      const iframe =
-        document.createElement("iframe");
-  
-      const iframeName =
-        "uploadFrame_" + Date.now();
-  
-      iframe.name = iframeName;
-      iframe.style.display = "none";
-  
-      document.body.appendChild(iframe);
-  
-  
-      const form =
-        document.createElement("form");
-  
-      form.method = "POST";
-      form.action = API_URL;
-      form.target = iframeName;
-  
-      form.style.display = "none";
-  
-  
-      const fields = {
-        token: UPLOAD_TOKEN,
-        base64: base64,
-        type: file.type,
-        name: file.name
-      };
-  
-  
-      Object.keys(fields).forEach(function (key) {
-  
-        const field =
-          document.createElement("input");
-  
-        field.type = "hidden";
-        field.name = key;
-        field.value = fields[key];
-  
-        form.appendChild(field);
-      });
-  
-  
-      document.body.appendChild(form);
+      const callbackName =
+        "driveUploadCallback_" +
+        Date.now() +
+        "_" +
+        Math.floor(
+          Math.random() * 100000
+        );
   
   
       /*
-        load poate fi declanșat o dată când iframe-ul
-        gol este creat și apoi din nou după răspuns.
+        Callback primit de la Apps Script.
       */
   
-      let submitted = false;
+      window[callbackName] =
+        function (response) {
   
   
-      iframe.onload = function () {
+          /*
+            Ștergem script-ul JSONP
+            după ce și-a făcut treaba.
+          */
   
-        if (!submitted) return;
-  
-        setSuccessState();
-  
-        resetInput(input);
-  
-        setTimeout(function () {
-  
-          form.remove();
-          iframe.remove();
-  
-        }, 1000);
-      };
+          if (script.parentNode) {
+            script.remove();
+          }
   
   
-      submitted = true;
-  
-      form.submit();
-    };
+          delete window[callbackName];
   
   
-    reader.readAsDataURL(file);
-  }
+          /*
+            Verificăm dacă Apps Script
+            ne-a dat sesiunea Drive.
+          */
+  
+          if (
+            !response ||
+            !response.success ||
+            !response.sessionUrl
+          ) {
+  
+            console.error(
+              "Eroare inițializare upload:",
+              response
+            );
   
   
-  document
-    .getElementById("fileCamera")
-    .addEventListener(
-      "change",
-      function () {
-        handleFileSelect(this);
-      }
-    );
+            setErrorState(
+              response &&
+              response.error
+  
+                ? response.error
+  
+                : "Nu s-a putut porni uploadul."
+            );
   
   
-  document
-    .getElementById("fileGallery")
-    .addEventListener(
-      "change",
-      function () {
-        handleFileSelect(this);
-      }
-    );
+            resetInput(input);
+  
+            return;
+          }
   
   
-  setIdleState();
-
-</script>
+          /*
+            Avem sessionUrl.
+  
+            De aici fișierul pleacă
+            DIRECT către Google Drive.
+          */
+  
+          uploadDirectToDrive(
+            response.sessionUrl,
+            file,
+            input
+          );
+        };
+  
+  
+      /*
+        Parametrii trimiși către
+        Apps Script.
+      */
+  
+      const params =
+        new URLSearchParams({
+  
+          action: "start",
+  
+          token:
+            UPLOAD_TOKEN,
+  
+          name:
+            file.name,
+  
+          type:
+            file.type ||
+            "application/octet-stream",
+  
+          size:
+            file.size.toString(),
+  
+          callback:
+            callbackName
+        });
+  
+  
+      /*
+        JSONP:
+        încărcăm Apps Script printr-un
+        <script> temporar.
+      */
+  
+      const script =
+        document.createElement(
+          "script"
+        );
+  
+  
+      script.src =
+        API_URL +
+        "?" +
+        params.toString();
+  
+  
+      /*
+        Dacă nici măcar Apps Script
+        nu poate fi accesat.
+      */
+  
+      script.onerror =
+        function () {
+  
+          delete window[callbackName];
+  
+  
+          if (script.parentNode) {
+            script.remove();
+          }
+  
+  
+          setErrorState(
+            "Nu s-a putut porni uploadul. Încearcă din nou."
+          );
+  
+  
+          resetInput(input);
+        };
+  
+  
+      document.body.appendChild(
+        script
+      );
+    }
+  
+  
+    /*
+      ============================
+      BUTON CAMERA
+      ============================
+    */
+  
+    document
+      .getElementById("fileCamera")
+      .addEventListener(
+        "change",
+        function () {
+  
+          handleFileSelect(this);
+        }
+      );
+  
+  
+    /*
+      ============================
+      BUTON GALERIE
+      ============================
+    */
+  
+    document
+      .getElementById("fileGallery")
+      .addEventListener(
+        "change",
+        function () {
+  
+          handleFileSelect(this);
+        }
+      );
+  
+  
+    /*
+      ============================
+      PORNIRE PAGINĂ
+      ============================
+    */
+  
+    setIdleState();
+  
+  </script>
 
 </body>
 </html>
