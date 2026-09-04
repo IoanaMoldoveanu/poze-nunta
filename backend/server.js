@@ -392,6 +392,31 @@ app.get("/folder-check", async (req, res) => {
   }
 });
 
+app.get("/oauth-check", async (req, res) => {
+  try {
+    const accessToken = await getAccessToken();
+
+    const response = await fetch(
+      `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`
+    );
+
+    const data = await response.json();
+
+    res.status(response.status).json({
+      ok: response.ok,
+      email: data.email || null,
+      scope: data.scope || null,
+      expires_in: data.expires_in || null
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server pornit pe portul ${PORT}`);
 });
