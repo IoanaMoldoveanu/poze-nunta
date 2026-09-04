@@ -5,7 +5,7 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const ALLOWED_ORIGIN = "https://ioanamoldoveanu.github.io";
-const FOLDER_ID = "17PYWLPdrwck8wTYDxZ9oRtQCEIz9G03q";
+const FOLDER_ID = "17PYWLPdrwck8wTYDxZ9oRtqCEIz9G03q";
 
 // Tokenul acesta NU este secret.
 // Este doar o protecție simplă împotriva uploadurilor întâmplătoare.
