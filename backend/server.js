@@ -5,7 +5,6 @@ const app = express();
 const PORT = process.env.PORT || 8080;
 
 const ALLOWED_ORIGIN = "https://ioanamoldoveanu.github.io";
-const FOLDER_ID = "1vdVOZvQntS1iexjon18xUsmDzJDL_rK6";
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
@@ -33,34 +32,40 @@ app.get("/", (req, res) => {
   });
 });
 
+function getOAuthClient() {
+  const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS;
+
+  if (!rawCredentials) {
+    throw new Error("GOOGLE_DRIVE_CREDENTIALS nu este disponibil.");
+  }
+
+  const credentials = JSON.parse(rawCredentials);
+
+  if (
+    !credentials.client_id ||
+    !credentials.client_secret ||
+    !credentials.refresh_token
+  ) {
+    throw new Error(
+      "Credentialele OAuth nu contin client_id, client_secret si refresh_token."
+    );
+  }
+
+  const oauth2Client = new OAuth2Client(
+    credentials.client_id,
+    credentials.client_secret
+  );
+
+  oauth2Client.setCredentials({
+    refresh_token: credentials.refresh_token
+  });
+
+  return oauth2Client;
+}
+
 app.get("/drive-test", async (req, res) => {
   try {
-    const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS;
-
-    if (!rawCredentials) {
-      throw new Error("GOOGLE_DRIVE_CREDENTIALS nu este disponibil.");
-    }
-
-    const credentials = JSON.parse(rawCredentials);
-
-    if (
-      !credentials.client_id ||
-      !credentials.client_secret ||
-      !credentials.refresh_token
-    ) {
-      throw new Error(
-        "Credentialele OAuth nu contin client_id, client_secret si refresh_token."
-      );
-    }
-
-    const oauth2Client = new OAuth2Client(
-      credentials.client_id,
-      credentials.client_secret
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: credentials.refresh_token
-    });
+    const oauth2Client = getOAuthClient();
 
     const accessToken = await oauth2Client.getAccessToken();
 
@@ -69,11 +74,17 @@ app.get("/drive-test", async (req, res) => {
     }
 
     const response = await fetch(
-      `https://www.googleapis.com/drive/v3/files/${FOLDER_ID}?fields=id,name,mimeType`,
+      "https://www.googleapis.com/drive/v3/files?fields=id,name,mimeType",
       {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${accessToken.token}`
-        }
+          Authorization: `Bearer ${accessToken.token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          name: "Poze Nunta - Upload Invitati",
+          mimeType: "application/vnd.google-apps.folder"
+        })
       }
     );
 
@@ -87,7 +98,7 @@ app.get("/drive-test", async (req, res) => {
 
     res.json({
       ok: true,
-      message: "Conexiunea cu Google Drive functioneaza.",
+      message: "Folderul a fost creat cu succes.",
       folder: data
     });
   } catch (error) {
