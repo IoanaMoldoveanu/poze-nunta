@@ -1,5 +1,5 @@
 import express from "express";
-import { google } from "google-auth-library";
+import { OAuth2Client } from "google-auth-library";
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -35,24 +35,27 @@ app.get("/", (req, res) => {
 
 app.get("/drive-test", async (req, res) => {
   try {
-    if (!process.env.GOOGLE_DRIVE_CREDENTIALS) {
+    const rawCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS;
+
+    if (!rawCredentials) {
       throw new Error("GOOGLE_DRIVE_CREDENTIALS nu este disponibil.");
     }
 
-    const credentials = JSON.parse(
-      process.env.GOOGLE_DRIVE_CREDENTIALS
-    );
+    const credentials = JSON.parse(rawCredentials);
 
-    const clientConfig =
-      credentials.installed || credentials.web;
-
-    if (!clientConfig) {
-      throw new Error("Configuratia OAuth nu a fost gasita.");
+    if (
+      !credentials.client_id ||
+      !credentials.client_secret ||
+      !credentials.refresh_token
+    ) {
+      throw new Error(
+        "Credentialele OAuth nu contin client_id, client_secret si refresh_token."
+      );
     }
 
-    const oauth2Client = new google.auth.OAuth2(
-      clientConfig.client_id,
-      clientConfig.client_secret
+    const oauth2Client = new OAuth2Client(
+      credentials.client_id,
+      credentials.client_secret
     );
 
     oauth2Client.setCredentials({
@@ -87,7 +90,6 @@ app.get("/drive-test", async (req, res) => {
       message: "Conexiunea cu Google Drive functioneaza.",
       folder: data
     });
-
   } catch (error) {
     console.error("Drive test error:", error.message);
 
